@@ -1,0 +1,30 @@
+name: Build
+on:
+  push:
+    branches:
+      - main
+env:
+  APP_NAME: 'Hello'
+  SRC_PATH: 'src' 
+  OUTPUT_PATH: 'dist' 
+  DOTNET_VERSION: '7.0.x' 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup .NET Core SDK ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore ${{ env.SRC_PATH }}/Hello.sln
+
+      - name: Build
+        run: dotnet build ${{ env.SRC_PATH }}/Hello.sln --configuration Release --no-restore
+      
+      - name: Publish
+        run: dotnet publish ${{ env.SRC_PATH }}/Hello.sln --no-restore --no-build --configuration Release --output ${{ env.OUTPUT_PATH }}
+      
