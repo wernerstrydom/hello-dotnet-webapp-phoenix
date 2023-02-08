@@ -60,8 +60,8 @@ jobs:
           template: ${{ env.DEPLOY_PATH }}/azuredeploy.json
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: "${{ env.APP_NAME }}-${{ steps.peuuid.outputs.name }}-WUS"
-          deploymentName: ${{ env.APP_NAME }}-${{ peuuid }}-1.0.${{github.run_number}}
-          parameters: name=${{ env.APP_NAME }}-${{ peuuid }}
+          deploymentName: ${{ env.APP_NAME }}-${{ steps.peuuid.outputs.name }}-1.0.${{github.run_number}}
+          parameters: name=${{ env.APP_NAME }}-${{ steps.peuuid.outputs.name }}
       
       - name: Deploy to Phoenix Environment 
         uses: azure/webapps-deploy@v2
