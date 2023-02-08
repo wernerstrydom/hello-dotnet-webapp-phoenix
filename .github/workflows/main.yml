@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
 
 env:
-  SUFFIX: hello-${{ github.run_id }}-${{ github.run_attempt }}
+  SUFFIX: hello-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
+  PHOENIX_ID: ${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
   APP_NAME: 'Hello-Phoenix'
   SRC_PATH: 'src' 
   OUTPUT_PATH: 'output' 
@@ -41,14 +42,6 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       # --- Phoenix Environment---------------------------------------------
-
-      - name: Generate ID for Phoenix Environment
-        id: peuuid
-        run: | 
-          PHOENIX_ID=phoenix$(uuidgen)
-          echo "PHOENIX_ID=$PHOENIX_ID" >> $GITHUB_ENV
-          echo "PHOENIX_ID: $PHOENIX_ID" >> $GITHUB_STEP_SUMMARY
-
 
       - name: Provision Phoenix Environment Resource Group
         run: |
