@@ -6,7 +6,6 @@ on:
   workflow_dispatch:
 
 env:
-  SUFFIX: hello-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
   PHOENIX_ID: ${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}
   APP_NAME: 'Hello-Phoenix'
   SRC_PATH: 'src' 
@@ -57,7 +56,7 @@ jobs:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
           resourceGroupName: "${{ env.APP_NAME }}-${{ env.PHOENIX_ID }}"
           deploymentName: ${{ env.APP_NAME }}-${{ env.PHOENIX_ID }}-1.0.${{github.run_number}}
-          parameters: name=${{ env.APP_NAME }}-${{ env.PHOENIX_ID }}
+          parameters: name=${{ env.APP_NAME }}
       
       - name: Deploy to Phoenix Environment 
         uses: azure/webapps-deploy@v2
@@ -72,12 +71,12 @@ jobs:
         env:
           WEBAPP_URL: "https://${{steps.pedeploy.outputs.url}}"
 
-      # - name: Destroy Phoenix Environment 
-      #   if: always()
-      #   run: |
-      #     if [ $(az group exists --name "${{ env.APP_NAME }}-${{ env.PHOENIX_ID }}") = true ]; then
-      #       az group delete --verbose --yes --no-wait --name "${{ env.APP_NAME }}-${{ env.PHOENIX_ID }}" 
-      #     fi 
+      - name: Destroy Phoenix Environment 
+        if: always()
+        run: |
+          if [ $(az group exists --name "${{ env.APP_NAME }}-${{ env.PHOENIX_ID }}") = true ]; then
+            az group delete --verbose --yes --no-wait --name "${{ env.APP_NAME }}-${{ env.PHOENIX_ID }}" 
+          fi 
 
       # --- Production -----------------------------------------------------
       
