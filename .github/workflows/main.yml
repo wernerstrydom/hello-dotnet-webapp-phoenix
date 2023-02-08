@@ -3,28 +3,113 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
 env:
-  APP_NAME: 'Hello'
+  SUFFIX: hello-${{ github.run_id }}-${{ github.run_attempt }}
+  APP_NAME: 'Hello-Phoenix'
   SRC_PATH: 'src' 
-  OUTPUT_PATH: 'dist' 
+  OUTPUT_PATH: 'output' 
+  DEPLOY_PATH: 'deploy' 
   DOTNET_VERSION: '7.0.x' 
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
-      - name: Setup .NET Core SDK ${{ env.DOTNET_VERSION }}
+     
+      # --- Build and Publish ----------------------------------------------
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-
+      
       - name: Restore
         run: dotnet restore ${{ env.SRC_PATH }}/Hello.sln
-
+      
       - name: Build
-        run: dotnet build ${{ env.SRC_PATH }}/Hello.sln --configuration Release --no-restore
-      
+        run: dotnet build ${{ env.SRC_PATH }}/Hello.sln --configuration Release --no-restore 
+
       - name: Publish
-        run: dotnet publish ${{ env.SRC_PATH }}/Hello.sln --no-restore --no-build --configuration Release --output ${{ env.OUTPUT_PATH }}
+        run: dotnet publish ${{ env.SRC_PATH }}/Hello/Hello.csproj --no-build --no-restore --configuration Release --output ${{ env.OUTPUT_PATH }}
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # --- Phoenix Environment---------------------------------------------
+
+      - name: Generate ID for Phoenix Environment
+        id: peuuid
+        run: | 
+            echo "::set-output name=uuid::$(uuidgen)"
+
+      - name: Provision Phoenix Environment Resource Group
+        run: |
+          if [ $(az group exists --name "${{ env.APP_NAME }}-${{ peuuid }}") = false ]; then
+            az group create --name "${{ env.APP_NAME }}-${{ peuuid }}" --location "West US"
+          fi 
+
+      - name: Provision Phoenix Environment Resources
+        id: pedeploy
+        uses: azure/arm-deploy@v1
+        with:
+          template: ${{ env.DEPLOY_PATH }}/azuredeploy.json
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: "${{ env.APP_NAME }}-${{ peuuid }}-WUS"
+          deploymentName: ${{ env.APP_NAME }}-${{ peuuid }}-1.0.${{github.run_number}}
+          parameters: name=${{ env.APP_NAME }}-${{ peuuid }}
       
+      - name: Deploy to Phoenix Environment 
+        uses: azure/webapps-deploy@v2
+        id: pefa
+        with:
+          app-name: ${{steps.pedeploy.outputs.siteName}}
+          slot-name: 'Production'
+          package: '${{ env.OUTPUT_PATH }}'
+    
+      - name: Test Phoenix Environment 
+        run: dotnet test ${{ env.SRC_PATH }}/Hello.sln --configuration Release --no-build --no-restore 
+        env:
+          WEBAPP_URL: "https://${{steps.pedeploy.outputs.url}}"
+
+      # - name: Destroy Phoenix Environment 
+      #   if: always()
+      #   run: |
+      #     if [ $(az group exists --name "${{ env.APP_NAME }}-${{ peuuid }}") = true ]; then
+      #       az group delete --verbose --yes --no-wait --name "${{ env.APP_NAME }}-${{ peuuid }}" 
+      #     fi 
+
+      # --- Production -----------------------------------------------------
+      
+      - name: Provision Production Resource Group
+        run: |
+          if [ $(az group exists --name "${{ env.APP_NAME }}-WUS") = false ]; then
+            az group create --name "${{ env.APP_NAME }}-WUS" --location "West US"
+          fi 
+
+      - name: Provision Production  Resources
+        id: deploy
+        uses: azure/arm-deploy@v1
+        with:
+          template: ${{ env.DEPLOY_PATH }}/azuredeploy.json
+          subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
+          resourceGroupName: "${{ env.APP_NAME }}-WUS"
+          deploymentName: ${{ env.APP_NAME }}-1.0.${{github.run_number}}
+          parameters: name=${{ env.APP_NAME }}
+      
+      - name: Deploy to Production 
+        uses: azure/webapps-deploy@v2
+        id: fa
+        with:
+          app-name: ${{steps.deploy.outputs.siteName}}
+          slot-name: 'Production'
+          package: '${{ env.OUTPUT_PATH }}'
+    
+      - name: Test Production 
+        run: dotnet test ${{ env.SRC_PATH }}/Hello.sln --configuration Release --no-build --no-restore 
+        env:
+          WEBAPP_URL: "https://${{steps.deploy.outputs.url}}"

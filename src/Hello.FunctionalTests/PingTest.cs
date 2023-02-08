@@ -13,6 +13,6 @@ public class PingTest
         Assert.True(response.IsSuccessStatusCode);
         var content = await response.Content.ReadAsStringAsync();
         Assert.NotNull(content);
-        Assert.Contains("Hello World", content);
+        Assert.Contains("Hello Phoenix", content);
     }
 }

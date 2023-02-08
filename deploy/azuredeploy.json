@@ -1,0 +1,81 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "name": {
+            "type": "string",
+            "defaultValue": "Hello",
+            "metadata": {
+                "description": "The name of the application"
+            }
+        }
+    },
+    "variables": {
+        "siteName": "[concat(toLower(parameters('name')), '-', uniqueString(resourceGroup().id))]",
+        "hostingPlanName": "[concat(toLower(parameters('name')), '-', uniqueString(resourceGroup().id))]"
+    },
+    "resources": [
+        {
+            "name": "[variables('hostingPlanName')]",
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2020-12-01",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "F1",
+                "capacity": 1
+            },
+            "tags": {
+                "displayName": "[concat(parameters('name'), ' App Service Plan')]"
+            },
+            "properties": {
+                "name": "[variables('hostingPlanName')]"
+            }
+        },
+        {
+            "name": "[variables('siteName')]",
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2020-12-01",
+            "location": "[resourceGroup().location]",
+            "tags": {
+                "displayName": "[concat(parameters('name'), ' Web App')]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
+            ],
+            "properties": {
+                "name": "[variables('siteName')]",
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
+            }
+        },
+        {
+            "type": "Microsoft.Web/sites/config",
+            "apiVersion": "2022-03-01",
+            "name": "[concat(variables('siteName'), '/web')]",
+            "location": "East US",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', variables('siteName'))]"
+            ],
+            "properties": {
+                "netFrameworkVersion": "v7.0",
+                "managedPipelineMode": "Integrated",
+                "minTlsVersion": "1.2",
+                "scmMinTlsVersion": "1.2",
+                "ftpsState": "FtpsOnly"
+            }
+        }
+    ],
+    "outputs": {
+        "url": {
+            "type": "string",
+            "value": "[reference(resourceId('Microsoft.Web/sites', variables('siteName')), '2020-12-01').defaultHostName]"
+        },
+        "hostingPlanName": {
+            "type": "string",
+            "value": "[variables('hostingPlanName')]"
+        },
+        "siteName": {
+            "type": "string",
+            "value": "[variables('siteName')]"
+        }
+    }
+}
