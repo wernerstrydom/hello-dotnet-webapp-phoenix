@@ -49,8 +49,8 @@ jobs:
 
       - name: Provision Phoenix Environment Resource Group
         run: |
-          if [ $(az group exists --name "${{ env.APP_NAME }}-${{ peuuid }}") = false ]; then
-            az group create --name "${{ env.APP_NAME }}-${{ peuuid }}" --location "West US"
+          if [ $(az group exists --name "${{ env.APP_NAME }}-${{ steps.peuuid.outputs.name }}") = false ]; then
+            az group create --name "${{ env.APP_NAME }}-${{ steps.peuuid.outputs.name }}" --location "West US"
           fi 
 
       - name: Provision Phoenix Environment Resources
@@ -59,7 +59,7 @@ jobs:
         with:
           template: ${{ env.DEPLOY_PATH }}/azuredeploy.json
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION }}
-          resourceGroupName: "${{ env.APP_NAME }}-${{ peuuid }}-WUS"
+          resourceGroupName: "${{ env.APP_NAME }}-${{ steps.peuuid.outputs.name }}-WUS"
           deploymentName: ${{ env.APP_NAME }}-${{ peuuid }}-1.0.${{github.run_number}}
           parameters: name=${{ env.APP_NAME }}-${{ peuuid }}
       
@@ -79,8 +79,8 @@ jobs:
       # - name: Destroy Phoenix Environment 
       #   if: always()
       #   run: |
-      #     if [ $(az group exists --name "${{ env.APP_NAME }}-${{ peuuid }}") = true ]; then
-      #       az group delete --verbose --yes --no-wait --name "${{ env.APP_NAME }}-${{ peuuid }}" 
+      #     if [ $(az group exists --name "${{ env.APP_NAME }}-${{ steps.peuuid.outputs.name }}") = true ]; then
+      #       az group delete --verbose --yes --no-wait --name "${{ env.APP_NAME }}-${{ steps.peuuid.outputs.name }}" 
       #     fi 
 
       # --- Production -----------------------------------------------------
